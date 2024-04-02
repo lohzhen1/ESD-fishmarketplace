@@ -1,29 +1,32 @@
 # FishMarketWeb
 
-This template should help get you started developing with Vue 3 in Vite.
+Did a Bidding system buying of fishes for restaurant and fishmonger. 
 
-## Recommended IDE Setup
+We utilized Flask for the REST API and VueJS for the frontend. We incorporated 
+external API services such as Stripe for payment processing. Additionally, we 
+implemented RabbitMQ as our AMQP message broker system and employed Kong 
+API for API gateway load balancing.  
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+We utilized Docker to containerize our microservices. 
 
-## Customize configuration
+The features we developed include an Auction system, which functions as a bidding platform 
+akin to a concert system. We also implemented a Queue System for purchasing fish, enabling 
+users to reserve fish after displaying them to potential buyers. In cases where customers 
+discover that the received fish is spoiled, they can request a refund. 
 
-See [Vite Configuration Reference](https://vitejs.dev/config/).
+Refund requests are manually reviewed, and approval depends on the condition of the fish, as depicted in the 
+pictures submitted through our website. 
 
-## Project Setup
+Deployed Kubernetes Cluster for Spoilt Fish scenario which eases deployment and scaling of microservice containers  
+Kubernetes Cluster deployed on Azure Kubernetes Service (AKS)
+NGINX Ingress for routing and controlling traffic in AKS 
 
-```sh
-npm install
-```
 
-### Compile and Hot-Reload for Development
 
-```sh
-npm run dev
-```
+![image](https://github.com/lohzhen1/ESD-fishmarketplace/assets/101655111/de7f4c3d-deac-473b-814f-c360190fb9f3)
 
-### Compile and Minify for Production
 
-```sh
-npm run build
-```
+Video on how our project works:
+https://www.youtube.com/watch?v=oDSGsa2g5bY
+
+
