@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+    kompose.version: 1.32.0 (HEAD)
+  labels:
+    io.kompose.service: retrieve-cart-items
+  name: retrieve-cart-items
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: retrieve-cart-items
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+        kompose.version: 1.32.0 (HEAD)
+      labels:
+        io.kompose.network/microservices-default: "true"
+        io.kompose.service: retrieve-cart-items
+    spec:
+      containers:
+        - env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: retrieve_cart_itemsURL
+              value: http://retrieve_cart_items:5105/retrieve_cart_items
+            - name: CartURL
+              value: http://cart:5004/cart
+            - name: CartItemsURL
+              value: http://cart_item:5062/cart_items
+          image: jiankiat/retrieve_cart_items:latest
+          name: retrieve-cart-items
+          ports:
+            - containerPort: 5105
+              hostPort: 5105
+              protocol: TCP
+      restartPolicy: Always

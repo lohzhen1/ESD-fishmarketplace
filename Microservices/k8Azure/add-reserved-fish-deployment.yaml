@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+    kompose.version: 1.32.0 (HEAD)
+  labels:
+    io.kompose.service: add-reserved-fish
+  name: add-reserved-fish
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: add-reserved-fish
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+        kompose.version: 1.32.0 (HEAD)
+      labels:
+        io.kompose.network/microservices-default: "true"
+        io.kompose.service: add-reserved-fish
+    spec:
+      containers:
+        - env:
+            - name: CartURL
+              value: http://cart:5004/cart
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: add_reserved_fishURL
+              value: http://add_reserved_fish:5125/add_reserved_fish
+          image: jiankiat/add_reserved_fish:latest
+          name: add-reserved-fish
+          ports:
+            - containerPort: 5125
+              hostPort: 5125
+              protocol: TCP
+      restartPolicy: Always

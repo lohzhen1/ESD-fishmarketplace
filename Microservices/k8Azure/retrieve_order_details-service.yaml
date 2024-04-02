@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+    kompose.version: 1.32.0 (HEAD)
+  labels:
+    io.kompose.service: retrieve-order-details
+  name: retrieve-order-details
+spec:
+  ports:
+    - name: "5110"
+      port: 5110
+      targetPort: 5110
+  selector:
+    io.kompose.service: retrieve-order-details

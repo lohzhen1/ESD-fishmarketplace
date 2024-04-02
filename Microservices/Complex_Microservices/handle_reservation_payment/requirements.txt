@@ -1,0 +1,6 @@
+flask_sqlalchemy
+flask_cors
+azure-storage-blob
+twilio
+pika
+pyodbc

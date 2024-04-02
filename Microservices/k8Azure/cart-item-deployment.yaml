@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml
+    kompose.version: 1.32.0 (HEAD)
+  labels:
+    io.kompose.service: cart-item
+  name: cart-item
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: cart-item
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml
+        kompose.version: 1.32.0 (HEAD)
+      labels:
+        io.kompose.network/microservices-default: "true"
+        io.kompose.service: cart-item
+    spec:
+      containers:
+        - env:
+            - name: CartItemURL
+              value: http://cart_item:5062/cart_item
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          image: jiankiat/cart_item:latest
+          name: cart-item
+          ports:
+            - containerPort: 5062
+              hostPort: 5062
+              protocol: TCP
+      restartPolicy: Always

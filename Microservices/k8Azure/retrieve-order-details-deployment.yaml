@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+    kompose.version: 1.32.0 (HEAD)
+  labels:
+    io.kompose.service: retrieve-order-details
+  name: retrieve-order-details
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: retrieve-order-details
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+        kompose.version: 1.32.0 (HEAD)
+      labels:
+        io.kompose.network/microservices-default: "true"
+        io.kompose.service: retrieve-order-details
+    spec:
+      containers:
+        - env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: retrieve_order_detailsURL
+              value: http://retrieve_order_details:5110/retrieve_order_details
+          image: jiankiat/retrieve_order_details:latest
+          name: retrieve-order-details
+          ports:
+            - containerPort: 5110
+              hostPort: 5110
+              protocol: TCP
+      restartPolicy: Always

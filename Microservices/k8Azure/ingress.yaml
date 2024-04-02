@@ -1,0 +1,189 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  # namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  #   nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  rules:
+    # - host: hello-world.info
+    # fishcluster-dns-twby41zx.hcp.eastus.azmk8s.io
+    # - host: fishcluster-dns-twby41zx.hcp.eastus.azmk8s.io
+    - http:
+        paths:
+          - path: /order
+            pathType: Prefix
+            backend:
+              service:
+                name: order
+                port:
+                  number: 5009
+          - path: /orders
+            pathType: Prefix
+            backend:
+              service:
+                name: order
+                port:
+                  number: 5009
+          - path: /email
+            pathType: Prefix
+            backend:
+              service:
+                name: email
+                port:
+                  number: 5015
+          - path: /order/details
+            pathType: Prefix
+            backend:
+              service:
+                name: order-details
+                port:
+                  number: 5050        
+          - path: /payment
+            pathType: Prefix
+            backend:
+              service:
+                name: payment
+                port:
+                  number: 5011     
+          - path: /config
+            pathType: Prefix
+            backend:
+              service:
+                name: payment
+                port:
+                  number: 5011  
+          - path: /create-checkout-session
+            pathType: Prefix
+            backend:
+              service:
+                name: payment
+                port:
+                  number: 5011      
+          - path: /retrieve_order_details
+            pathType: Prefix
+            backend:
+              service:
+                name: retrieve-order-details
+                port:
+                  number: 5110   
+          - path: /inventory
+            pathType: Prefix
+            backend:
+              service:
+                name: inventory
+                port:
+                  number: 5006      
+          - path: /reservation
+            pathType: Prefix
+            backend:
+              service:
+                name: reservation
+                port:
+                  number: 5003       
+          - path: /cart_items
+            pathType: Prefix
+            backend:
+              service:
+                name: cart-item
+                port:
+                  number: 5062      
+          - path: /cart_item
+            pathType: Prefix
+            backend:
+              service:
+                name: cart-item
+                port:
+                  number: 5062    
+          - path: /add_reserved_fish
+            pathType: Prefix
+            backend:
+              service:
+                name: add-reserved-fish
+                port:
+                  number: 5125   
+          - path: /refund
+            pathType: Prefix
+            backend:
+              service:
+                name: refund
+                port:
+                  number: 5002
+          - path: /sms
+            pathType: Prefix
+            backend:
+              service:
+                name: sms
+                port:
+                  number: 5014
+          - path: /cart
+            pathType: Prefix
+            backend:
+              service:
+                name: cart
+                port:
+                  number: 5004
+          - path: /retrieve_cart_items
+            pathType: Prefix
+            backend:
+              service:
+                name: retrieve-cart-items
+                port:
+                  number: 5105
+          - path: /handle_reservation_payment
+            pathType: Prefix
+            backend:
+              service:
+                name: handle-reservation-payment
+                port:
+                  number: 5090
+          - path: /request_refund
+            pathType: Prefix
+            backend:
+              service:
+                name: request-refund
+                port:
+                  number: 5500                  
+          - path: /update_refund
+            pathType: Prefix
+            backend:
+              service:
+                name: update-refund
+                port:
+                  number: 5200  
+          - path: /get_refund
+            pathType: Prefix
+            backend:
+              service:
+                name: update-refund
+                port:
+                  number: 5200  
+          # - path: /grafana
+          #   pathType: Prefix
+          #   backend:
+          #     service:
+          #       name: grafana
+          #       port:
+          #         number: 80  
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring  # Replace with the actual namespace where Grafana is deployed
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 80

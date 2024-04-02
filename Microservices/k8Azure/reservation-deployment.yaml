@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+    kompose.version: 1.32.0 (HEAD)
+  labels:
+    io.kompose.service: reservation
+  name: reservation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: reservation
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+        kompose.version: 1.32.0 (HEAD)
+      labels:
+        io.kompose.network/microservices-default: "true"
+        io.kompose.service: reservation
+    spec:
+      containers:
+        - env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: Reservation
+              value: http://reservation:5003/reservation
+          image: jiankiat/reservation:latest
+          name: reservation
+          ports:
+            - containerPort: 5003
+              hostPort: 5003
+              protocol: TCP
+      restartPolicy: Always

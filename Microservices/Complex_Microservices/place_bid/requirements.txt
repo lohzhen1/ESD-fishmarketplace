@@ -1,0 +1,6 @@
+flask_sqlalchemy
+flask_cors
+pika
+pyodbc
+flask_socketio
+requests==2.31.0

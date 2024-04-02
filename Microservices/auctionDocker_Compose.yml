@@ -1,0 +1,148 @@
+version: "3.8"
+
+volumes:
+  rabbitmq_data:
+
+services:
+
+# Auction docker
+  auction:
+    build: 
+      context: ./Auction
+      dockerfile: Dockerfile
+    ports:
+      - "5007:5007" 
+    restart: always
+    environment:
+      AuctionURL: http://auction:5007/auction
+      rabbit_host: rabbitmq
+      rabbit_port: 5672
+      a_queue_name: Auction_Bid
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - rabbitmq
+
+#Bidding_Records docker
+  bidding_records:
+    build: 
+      context: ./bidding_records
+      dockerfile: Dockerfile
+    ports:
+      - "5008:5008" 
+    restart: always
+    environment:
+      bidding_recordsURL: http://biddingrecords:5008/bidding_records
+      rabbit_host: rabbitmq
+      rabbit_port: 5672
+      a_queue_name: Record_Bid
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - rabbitmq
+
+#Check_Settlement docker
+  check_settlement:
+    build: 
+      context: ./Complex_Microservices/check_settlement
+      dockerfile: Dockerfile
+    ports:
+      - "5106:5106" 
+    restart: always
+    environment:
+      check_settlementURL: http://checksettlement:5106/checkSettlement
+      rabbit_host: rabbitmq
+      rabbit_port: 5672
+      auctionURL: "http://localhost:5007/auction"
+      orderURL: "http://localhost:5009/order"
+      orderDetailsURL: "http://localhost:5050/order/details"
+      biddingURL: "http://localhost:5008/bidding_records"
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - rabbitmq
+
+#End Auction docker
+  end_auction:
+    build: 
+      context: ./Complex_Microservices/end_auction
+      dockerfile: Dockerfile
+    ports:
+      - "5102:5102" 
+    restart: always
+    environment:
+      end_auctionURL: http://endauction:5102/endAuction
+      auctionURL: "http://localhost:5007/auction"
+      orderURL: "http://localhost:5009/order"
+      orderDetailsURL: "http://localhost:5050/order/details"
+      PYTHONUNBUFFERED: 1
+
+#Handle Auction Payment docker
+  handle_auction_payment:
+    build: 
+      context: ./Complex_Microservices/handle_auction_payment
+      dockerfile: Dockerfile
+    ports:
+      - "5101:5101" 
+    restart: always
+    environment:
+      handleAuctionPaymentURL: http://handleAuctionPayment:5101/handle_auction_payment
+      checkoutURL: "http://localhost:5011/create-checkout-session"
+      orderURL: "http://localhost:5009/order/info/"
+      orderDetailURL: "http://localhost:5050/order/allDetails/"
+      PYTHONUNBUFFERED: 1
+
+#Place bid docker
+  place_bid:
+    build: 
+      context: ./Complex_Microservices/place_bid
+      dockerfile: Dockerfile
+    ports:
+      - "5100:5100" 
+    restart: always
+    environment:
+      placeBidURL: http://placeBid:5100/place_bid
+      rabbit_host: rabbitmq
+      rabbit_port: 5672
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - rabbitmq
+# Payment docker
+  payment:
+    build: 
+      context: ./Payment
+      dockerfile: Dockerfile
+    ports:
+      - "5011:5011" 
+    restart: always
+    environment:
+      PaymentURL: http://payment:5011/payment
+      PYTHONUNBUFFERED: 1
+      PAYMENT_URL: 'http://payment:5011/refund'
+
+  ####################################
+  # RabbitMQ: The messaging broker   
+  ####################################
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: esd-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes: 
+      - ./rabbitmq.config:/etc/rabbitmq/rabbitmq.config
+      - ./rabbitmq_definitions.json:/etc/rabbitmq/rabbitmq_definitions.json
+      - rabbitmq_data:/var/lib/rabbitmq
+
+
+  # order:
+  #   build: /Order  # path to the directory containing the Dockerfile for the user service
+  #   ports:
+  #     - "5009:5009" 
+  #   environment:
+  #     OrderURL: 'http://order:5009/order'
+  
+  # rabbit:
+  #   image: "rabbitmq:3-management"
+  #   hostname: my-rabbit
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"

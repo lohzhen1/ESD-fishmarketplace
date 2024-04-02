@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f compose-refund.yml -o k8
+    kompose.version: 1.32.0 (HEAD)
+  labels:
+    io.kompose.service: payment
+  name: payment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: payment
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f compose-refund.yml -o k8
+        kompose.version: 1.32.0 (HEAD)
+      labels:
+        io.kompose.network/microservices-default: "true"
+        io.kompose.service: payment
+    spec:
+      containers:
+        - env:
+            - name: PAYMENT_URL
+              value: http://payment:5011/refund
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PaymentURL
+              value: http://payment:5011/payment
+          image: jiankiat/payment:latest
+          name: payment
+          ports:
+            - containerPort: 5011
+              hostPort: 5011
+              protocol: TCP
+      restartPolicy: Always

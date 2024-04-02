@@ -1,0 +1,498 @@
+version: '3.8'
+
+volumes:
+  pgdata: 
+  rabbitmq_data:
+
+networks:
+  kong-net:
+    driver: bridge
+    name: kong-net
+
+services:
+
+  ####################################
+  # RabbitMQ: The messaging broker   
+  ####################################
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: esd-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes: 
+      - ./rabbitmq.config:/etc/rabbitmq/rabbitmq.config
+      - ./rabbitmq_definitions.json:/etc/rabbitmq/rabbitmq_definitions.json
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  #######################################
+  # Postgres: The database used by Kong
+  #######################################
+  kong-database:
+    image: postgres:15 # tested 20231101; Ref: https://docs.konghq.com/gateway/latest/support/third-party/
+    platform: linux/amd64  # <- required for Mac M1 chip. Otherwise, can remove
+    restart: always
+    networks:
+      - kong-net
+    environment:
+      POSTGRES_DB: kong
+      POSTGRES_USER: kong
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "kong"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  #######################################
+  # Kong database migration
+  #######################################
+  kong-migration:
+    image: kong/kong-gateway:3.2.2.5 # tested 20231101
+    platform: linux/amd64  # <- required for Mac M1 chip. Otherwise, can remove
+    command: "kong migrations bootstrap"
+    restart: on-failure
+    networks:
+      - kong-net
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: password
+    depends_on:
+      - kong-database
+
+  #######################################
+  # Kong: The API Gateway
+  #######################################
+  kong:
+    image: kong/kong-gateway:3.2.2.5 # tested 20231101
+    platform: linux/amd64  # <- required for Mac M1 chip. Otherwise, can remove
+    restart: always
+    networks:
+      - kong-net
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: password
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_ADMIN_GUI_URL: http://localhost:8002
+    depends_on:
+      - kong-migration
+    ports: # https://docs.konghq.com/gateway/latest/production/networking/default-ports/
+      - "8000:8000" # Takes incoming HTTP traffic from Consumers, and forwards it to upstream Services.
+      - "8443:8443" # Takes incoming HTTPS traffic from Consumers, and forwards it to upstream Services.
+      - "8001:8001" # Admin API. Listens for calls from the command line over HTTP.
+      - "8444:8444" # Admin API. Listens for calls from the command line over HTTPS.
+      - "8002:8002" # Kong Manager (GUI). Listens for HTTP traffic.
+      - "8445:8445" # Kong Manager (GUI). Listens for HTTPS traffic.
+      - "8003:8003" # Dev Portal. Listens for HTTP traffic, assuming Dev Portal is enabled.
+      - "8446:8446" # Dev Portal. Listens for HTTP traffic, assuming Dev Portal is enabled.
+      - "8004:8004" # Dev Portal /files traffic over HTTPS, assuming the Dev Portal is enabled.
+      - "8447:8447" # Dev Portal /files traffic over HTTPS, assuming the Dev Portal is enabled.
+
+
+  ####################################
+  # Refund  
+  ####################################
+  refund:
+    build: ./Refund
+    ports:
+      - "5002:5002"
+    environment:
+      refundURL: 'http://refund:5002/refund'
+    restart: always
+  
+  ### To delay refund service for 10 seconds to make sure that the RabbitMQ is up and running 
+  ## then refund.py will be executed otherwise amqp connection will fail for refund service
+    command: ["sh", "-c", "sleep 10 && python Refund.py"]
+  
+    
+
+   ####################################
+  # End of Refund  
+  ####################################
+
+
+ ####################################
+  # Order
+  ####################################
+  order:
+    build: ./Order  # path to the directory containing the Dockerfile for the user service
+    ports:
+      - "5009:5009" 
+    environment:
+      OrderURL: 'http://order:5009/order/'
+    
+  
+
+   ####################################
+  # End of Order
+  ####################################
+
+ ####################################
+  # process_refund 
+  ####################################
+  update_refund:
+    build: ./Complex_Microservices/Process_refund  # path to the directory containing the Dockerfile for the user service
+    ports:
+      - "5200:5200" 
+    environment:
+      update_refund_URL: 'http://update_refund:5200/update_refund'
+
+   ####################################
+  # End of process_refund
+  ####################################
+
+
+  ####################################
+  # request_refund
+  ####################################
+  request_refund:
+    build: ./Complex_Microservices/Request_refund  # path to the directory containing the Dockerfile for the user service
+    ports:
+      - "5500:5500" 
+    environment:
+      request_refund_URL: 'http://request_refund:5500/request_refund'
+
+   ####################################
+  # End of request refund
+  ####################################
+
+
+  ####################################
+  # SMS
+  ####################################
+  sms:
+    build: ./Notification/SMS  # replace with the path to the directory containing the Dockerfile for the SMS service
+    ports:
+      - "5014:5014" 
+    environment:
+      SMS_URL: 'http://sms:5014/sms'
+
+  ####################################
+  # End of SMS
+  ####################################
+
+  ####################################
+  # Email
+  ####################################
+  email:
+    build: ./Notification/Email  # replace with the path to the directory containing the Dockerfile for the Email service
+    ports:
+      - "5015:5015" 
+    environment:
+      EMAIL_URL: 'http://email:5015/email'
+
+  ####################################
+  # End of Email
+  ####################################
+
+
+  ####################################
+  # payment
+  ####################################
+  # payment:
+  #   build: /Payment  # replace with the path to the directory containing the Dockerfile for the Email service
+  #   ports:
+  #     - "5011:5011" 
+  #   environment:
+  #     PAYMENT_URL: 'http://payment:5011/refund'
+
+  ####################################
+  # End of payment
+  ####################################
+
+
+
+
+  ####################################
+  # User  
+  ####################################
+  user:
+    build: ./User  # path to the directory containing the Dockerfile for the user service
+    ports:
+      - "5010:5010" 
+    environment:
+      UserURL: 'http://user:5010/user/login'
+
+   ####################################
+  # End of User 
+  ####################################
+
+
+
+
+
+  ####################################
+  # RabbitMQ: The messaging broker   
+
+  ####################################
+
+  # rabbit:
+  #   image: "rabbitmq:3-management"
+  #   hostname: my-rabbit
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+    #depends_on:
+    #  - refund
+
+
+  ####################################
+  # End of RabbitMQ
+  ####################################
+
+# Auction docker
+  auction:
+    build: 
+      context: ./Auction
+      dockerfile: Dockerfile
+    ports:
+      - "5007:5007" 
+    restart: always
+    environment:
+      auctionURL: http://auction:5007/auction
+      rabbit_host: rabbitmq
+      rabbit_port: 5672
+      a_queue_name: Auction_Bid
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - rabbitmq
+
+#Bidding_Records docker
+  bidding_records:
+    build: 
+      context: ./bidding_records
+      dockerfile: Dockerfile
+    ports:
+      - "5008:5008" 
+    restart: always
+    environment:
+      bidding_recordsURL: http://bidding_records:5008/bidding_records
+      rabbit_host: rabbitmq
+      rabbit_port: 5672
+      a_queue_name: Record_Bid
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - rabbitmq
+
+#Check_Settlement docker
+  check_settlement:
+    build: 
+      context: ./Complex_Microservices/check_settlement
+      dockerfile: Dockerfile
+    ports:
+      - "5106:5106" 
+    restart: always
+    environment:
+      check_settlementURL: http://checksettlement:5106/checkSettlement
+      rabbit_host: rabbitmq
+      rabbit_port: 5672
+      auctionURL: "http://auction:5007/auction"
+      orderURL: "http://order:5009/order"
+      orderDetailsURL: "http://order_details:5050/order/details"
+      biddingURL: "http://bidding_records:5008/bidding_records"
+      smsURL: "http://sms:5014/send_sms"
+      emailURL: "http://email:5015/send_email"
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - auction
+      - order
+      - order_details
+      - bidding_records
+      - sms
+  
+#End Auction docker
+  end_auction:
+    build: 
+      context: ./Complex_Microservices/end_auction
+      dockerfile: Dockerfile
+    ports:
+      - "5102:5102" 
+    restart: always
+    environment:
+      end_auctionURL: http://endauction:5102/endAuction
+      auctionURL: "http://auction:5007/auction"
+      orderURL: "http://order:5009/order"
+      orderDetailsURL: "http://order_details:5050/order/details"
+      smsURL: "http://sms:5014/send_sms"
+      emailURL: "http://email:5015/send_email"
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - auction
+      - order
+      - order_details
+      - sms
+
+
+#Handle Auction Payment docker
+  handle_auction_payment:
+    build: 
+      context: ./Complex_Microservices/handle_auction_payment
+      dockerfile: Dockerfile
+    ports:
+      - "5101:5101" 
+    restart: always
+    environment:
+      handleAuctionPaymentURL: http://handleAuctionPayment:5101/handle_auction_payment
+      checkoutURL: "http://payment:5011/create-checkout-session"
+      orderURL: "http://order:5009/order/info/"
+      orderDetailURL: "http://order_details:5050/order/allDetails/"
+      PYTHONUNBUFFERED: 1
+
+#Place bid docker
+  place_bid:
+    build: 
+      context: ./Complex_Microservices/place_bid
+      dockerfile: Dockerfile
+    ports:
+      - "5100:5100" 
+    restart: always
+    environment:
+      placeBidURL: http://placeBid:5100/place_bid
+      rabbit_host: rabbitmq
+      rabbit_port: 5672
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - rabbitmq
+
+# Payment docker
+  payment:
+    build: 
+      context: ./Payment
+      dockerfile: Dockerfile
+    ports:
+      - "5011:5011" 
+    restart: always
+    environment:
+      PaymentURL: http://payment:5011/payment
+      PYTHONUNBUFFERED: 1
+      PAYMENT_URL: 'http://payment:5011/refund'
+
+  # Cart docker
+  cart:
+    build: 
+      context: ./Cart
+      dockerfile: Dockerfile
+    ports:
+      - "5004:5004" 
+    restart: always
+    environment:
+      CartURL: http://cart:5004/cart
+      PYTHONUNBUFFERED: 1
+
+  # Cart_item docker
+  cart_item:
+    build: 
+      context: ./Cart_item
+      dockerfile: Dockerfile
+    ports:
+      - "5062:5062" 
+    restart: always
+    environment:
+      CartItemURL: http://cart_item:5062/cart_item
+      PYTHONUNBUFFERED: 1
+
+  #Inventory docker
+  inventory:
+    build: 
+      context: ./Inventory
+      dockerfile: Dockerfile
+    ports:
+      - "5006:5006" 
+    restart: always
+    environment:
+      InventoryURL: http://inventory:5006/inventory
+      PYTHONUNBUFFERED: 1
+
+  #Order_Details docker
+  order_details:
+    build: 
+      context: ./Order_Details
+      dockerfile: Dockerfile
+    ports:
+      - "5050:5050" 
+    restart: always
+    environment:
+      Order_DetailsURL: http://order_details:5050/order_details
+      PYTHONUNBUFFERED: 1
+
+  #Reservation docker
+  reservation:
+    build: 
+      context: ./Reservation
+      dockerfile: Dockerfile
+    ports:
+      - "5003:5003" 
+    restart: always
+    environment:
+      Reservation: "http://reservation:5003/reservation"
+      PYTHONUNBUFFERED: 1
+
+  #Handle Reservation Payment docker
+  handle_reservation_payment:
+    build: 
+      context: ./Complex_Microservices/handle_reservation_payment
+      dockerfile: Dockerfile
+    ports:
+      - "5090:5090" 
+    restart: always
+    environment:
+      handle_reservation_paymentURL: http://handle_reservation_payment:5090/handle_reservation_payment
+      CartItemsURL: http://cart_item:5062/cart_item
+      PYTHONUNBUFFERED: 1
+
+  #Retrieve Cart Items docker
+  retrieve_cart_items:
+    build: 
+      context: ./Complex_Microservices/retrieve_cart_items
+      dockerfile: Dockerfile
+    ports:
+      - "5105:5105" 
+    restart: always
+    environment:
+      retrieve_cart_itemsURL: http://retrieve_cart_items:5105/retrieve_cart_items
+      CartURL: http://cart:5004/cart
+      CartItemsURL: http://cart_item:5062/cart_item
+      PYTHONUNBUFFERED: 1
+    
+  #Retrieve Order Details docker
+  retrieve_order_details:
+    build: 
+      context: ./Complex_Microservices/retrieve_order_details
+      dockerfile: Dockerfile
+    ports:
+      - "5110:5110" 
+    restart: always
+    environment:
+      retrieve_order_detailsURL: http://retrieve_order_details:5110/retrieve_order_details
+      PYTHONUNBUFFERED: 1
+
+  
+  #add reserved fih
+  add_reserved_fish:
+    build: 
+      context: ./Complex_Microservices/Add_reserved_fish
+      dockerfile: Dockerfile
+    ports:
+      - "5125:5125" 
+    restart: always
+    environment:
+      add_reserved_fishURL: http://add_reserved_fish:5125/add_reserved_fish
+      CartURL: http://cart:5004/cart
+      CartItemsURL: http://cart_item:5062/cart_item
+      PYTHONUNBUFFERED: 1
+
+
+    

@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+    kompose.version: 1.32.0 (HEAD)
+  labels:
+    io.kompose.service: inventory
+  name: inventory
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: inventory
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+        kompose.version: 1.32.0 (HEAD)
+      labels:
+        io.kompose.network/microservices-default: "true"
+        io.kompose.service: inventory
+    spec:
+      containers:
+        - env:
+            - name: InventoryURL
+              value: http://inventory:5006/inventory
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          image: jiankiat/inventory:latest
+          name: inventory
+          ports:
+            - containerPort: 5006
+              hostPort: 5006
+              protocol: TCP
+      restartPolicy: Always

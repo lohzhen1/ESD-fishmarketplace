@@ -1,0 +1,90 @@
+version: "3.8"
+
+volumes:
+  rabbitmq_data:
+
+services:
+
+# Cart docker
+  cart:
+    build: 
+      context: ./Cart
+      dockerfile: Dockerfile
+    ports:
+      - "5004:5004" 
+    restart: always
+    environment:
+      CartURL: http://cart:5004/cart
+      PYTHONUNBUFFERED: 1
+
+#Inventory docker
+  inventory:
+    build: 
+      context: ./Inventory
+      dockerfile: Dockerfile
+    ports:
+      - "5006:5006" 
+    restart: always
+    environment:
+      InventoryURL: http://inventory:5006/inventory
+      PYTHONUNBUFFERED: 1
+
+#Order_Details docker
+  order_details:
+    build: 
+      context: ./Order_Details
+      dockerfile: Dockerfile
+    ports:
+      - "5050:5050" 
+    restart: always
+    environment:
+      Order_DetailsURL: http://order_details:5050/order_details
+      PYTHONUNBUFFERED: 1
+
+#Reservation docker
+  reservation:
+    build: 
+      context: ./Reservation
+      dockerfile: Dockerfile
+    ports:
+      - "5003:5003" 
+    restart: always
+    environment:
+      Reservation: "http://reservation:5003/reservation"
+      PYTHONUNBUFFERED: 1
+
+#Handle Reservation Payment docker
+  handle_reservation_payment:
+    build: 
+      context: ./Complex_Microservices/handle_reservation_payment
+      dockerfile: Dockerfile
+    ports:
+      - "5090:5090" 
+    restart: always
+    environment:
+      handle_reservation_paymentURL: http://handle_reservation_payment:5090/handle_reservation_payment
+      PYTHONUNBUFFERED: 1
+
+#Retrieve Cart Items docker
+  retrieve_cart_items:
+    build: 
+      context: ./Complex_Microservices/retrieve_cart_items
+      dockerfile: Dockerfile
+    ports:
+      - "5105:5105" 
+    restart: always
+    environment:
+      retrieve_cart_itemsURL: http://retrieve_cart_items:5105/retrieve_cart_items
+      PYTHONUNBUFFERED: 1
+    
+#Retrieve Order Details docker
+  retrieve_order_details:
+    build: 
+      context: ./Complex_Microservices/retrieve_order_details
+      dockerfile: Dockerfile
+    ports:
+      - "5110:5110" 
+    restart: always
+    environment:
+      retrieve_order_detailsURL: http://retrieve_order_details:5110/retrieve_order_details
+      PYTHONUNBUFFERED: 1

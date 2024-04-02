@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml
+    kompose.version: 1.32.0 (HEAD)
+  labels:
+    io.kompose.service: cart-item
+  name: cart-item
+spec:
+  ports:
+    - name: "5062"
+      port: 5062
+      targetPort: 5062
+  selector:
+    io.kompose.service: cart-item

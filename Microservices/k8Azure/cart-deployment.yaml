@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+    kompose.version: 1.32.0 (HEAD)
+  labels:
+    io.kompose.service: cart
+  name: cart
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: cart
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+        kompose.version: 1.32.0 (HEAD)
+      labels:
+        io.kompose.network/microservices-default: "true"
+        io.kompose.service: cart
+    spec:
+      containers:
+        - env:
+            - name: CartURL
+              value: http://cart:5004/cart
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          image: jiankiat/cart:latest
+          name: cart
+          ports:
+            - containerPort: 5004
+              hostPort: 5004
+              protocol: TCP
+      restartPolicy: Always

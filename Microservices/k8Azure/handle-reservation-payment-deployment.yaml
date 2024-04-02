@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+    kompose.version: 1.32.0 (HEAD)
+  labels:
+    io.kompose.service: handle-reservation-payment
+  name: handle-reservation-payment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: handle-reservation-payment
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose --file docker-compose.yml convert -o kubernetes
+        kompose.version: 1.32.0 (HEAD)
+      labels:
+        io.kompose.network/microservices-default: "true"
+        io.kompose.service: handle-reservation-payment
+    spec:
+      containers:
+        - env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: handle_reservation_paymentURL
+              value: http://handle_reservation_payment:5090/handle_reservation_payment
+            - name: CartItemsURL
+              value: http://cart_item:5062/cart_item
+          image: jiankiat/handle_reservation_payment:latest
+          name: handle-reservation-payment
+          ports:
+            - containerPort: 5090
+              hostPort: 5090
+              protocol: TCP
+      restartPolicy: Always
