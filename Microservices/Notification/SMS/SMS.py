@@ -16,7 +16,7 @@ def sendSMS(body_message):
     message = client.messages.create(
         body=body_message,
         from_=twilio_phone_number,
-        to='+65 9658 2035'  # Replace with your actual phone number
+        to='12345'  # Replace with your actual phone number
     )
 
 @app.route('/send_sms', methods=['POST'])
